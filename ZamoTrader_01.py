@@ -9,7 +9,7 @@ import pandas_datareader as web
 #import yfinance as yf
 import matplotlib.pyplot as plt
 #import mplfinance as mpf 
-#import seaborn as sns
+import seaborn as sns
 import datetime as dt
 
 #handle csv files
@@ -25,10 +25,14 @@ plt.close('all')
 currency = "USD"
 metric = "Open"
 
-start = dt.date(2021, 1, 14)
+start = dt.date(2022,1, 1)
 end =  dt.datetime.now()
 
-crypto = ['BTC', 'ETH' , 'CRO' , 'DOT1', 'EGLD', 'XRP', 'ADA' ]
+
+dataBtc = web.DataReader('BTC-USD', "yahoo", start, end)
+
+
+crypto = ['JUV', 'BONDLY'] #'ETH', 'BNB' , 'ADA', 'SOL', 'LUNA', 'DOT',  'MATIC', 'CRO', 'ATOM', 'EGLD' ]
 colnames = []
 
 first = True
@@ -36,7 +40,21 @@ first = True
 for ticker in crypto:
     data = web.DataReader(f'{ticker}-{currency}', "yahoo", start, end)
     #data2 =  yf.download('BTC',start,interval="1h")
-    data.columns = data.columns.str.strip()
+    if 0:
+        data = data.resample('1W').agg({'Open': 'first', 
+                                      'High': 'max', 
+                                      'Low': 'min', 
+                                      'Adj Close': 'last'})
+    
+    # Divide the DataFrame1 elements by the elements of DataFrame2
+    if 0:
+        data['Open']      = data['Open'].div(dataBtc['Open']);
+        data['High']      = data['High'].div(dataBtc['High']);
+        data['Low']       = data['Low'].div(dataBtc['Low']);
+        data['Adj Close'] = data['Adj Close'].div(dataBtc['Adj Close']);
+    
+    
+    
     # if first:
     #     combined = data[[metric]].copy()
     #     colnames.append(ticker)
@@ -77,7 +95,7 @@ for ticker in crypto:
         RSI = 100.0 / (1.0 + relative_strength)
         return RSI
     
-    RSI_14 = calculate_RSI(positive, negative, 21)
+    RSI_14 = calculate_RSI(positive, negative, 14)
     # RSI_21 = calculate_RSI(positive, negative, 21)
     
     # RSI calculation
@@ -89,14 +107,16 @@ for ticker in crypto:
     vK = ( data['Adj Close'] - v14Low ) * 100.0 / ( v14High - v14Low ) 
     vD = vK.rolling(lDayD).mean()
     
-     
+   
+    
     sEMA = (26,12,9)
-    shortEMA = data['Adj Close'].ewm(span=sEMA[1], adjust=False).mean()
-    longEMA = data['Adj Close'].ewm(span=sEMA[0], adjust=False).mean()
+    longEMA = data['Adj Close'].ewm(span=sEMA[0], adjust=False, min_periods=sEMA[0]).mean()
+    shortEMA = data['Adj Close'].ewm(span=sEMA[1], adjust=False, min_periods=sEMA[1]).mean()
     vMACD = (  shortEMA - longEMA )
-    vSignal = vMACD.ewm(span=sEMA[2], adjust=False).mean()
-    vMacdDiff = 2 * ( vMACD - vSignal )
+    vSignal = vMACD.ewm(span=sEMA[2], adjust=False,min_periods=9).mean()
+    vMacdDiff = ( vMACD - vSignal )
        
+
     
     combined = pd.DataFrame() # combined data frame
     
@@ -144,8 +164,8 @@ for ticker in crypto:
     
     
     ax3 = plt.subplot(313, sharex = ax1)
-    ax3.plot(data.index, vMACD, label =  'MACD', color = 'red')
-    ax3.plot(data.index, vSignal, label =  'Signal', color = 'green')
+    ax3.plot(data.index, vMACD, label =  'MACD', color = 'green')
+    ax3.plot(data.index, vSignal, label =  'Signal', color = 'red')
     ax3.plot(data.index, vMacdDiff, label =  'Delta', color = 'grey')
     ax3.axhline(0,linestyle='--', alpha =0.5, color = '#CCccCC')
     ax3.grid(True, color = '#555555')
@@ -156,70 +176,6 @@ for ticker in crypto:
     ax3.tick_params(axis = 'y', colors='white')
     
     
-    #DataCursor([line1, line2])
-    
-    plt.show()
-    lMeanWindow = 21
-    y = combined['Adj Close'] # mean on 7 days
-    #y = y / combined['Adj Close'].rolling(window=int(lMeanWindow)).mean() # mean on 15 days
-    x = combined['%K']/100
-    vX=[]
-    vY=[]
-
-    for ii in range(x.size - lMeanWindow) :
-        if not ( np.isnan(x[ ii])  or np.isnan(y[lMeanWindow]) ):
-            vX.append(x[ ii])
-            vY.append(float(y[ii+lMeanWindow]))
-    
-    #reshape the date array into the numpy array of nX1
-    date =np.array(vX)[:, None]
-
-    price=vY
-    #print(date)
-    #print(price)
-    
-    plt.figure(figsize = (12,8))
-    plt.plot(x, color = 'magenta')
-    plt.show()
-    
-    #DATA PREDICTION
-    #initialise svr, fit the models, predidct the model values
-    #kernel specifies the kernel type used in algorithm
-    #C is the error penalty
-    #gamma is the kernel coefficient
-    #degree is the polynomial degree in poly kernel
-    
-    
-
-    svr_lin=SVR(kernel='linear',C=1e3)
-    svr_poly=SVR(kernel='poly',C=1e3,degree=2)
-    svr_rbf=SVR(kernel='rbf',C=1e3,gamma=0.1)
-    
-    svr_lin.fit(date,price)
-    svr_poly.fit(date,price)
-    svr_rbf.fit(date,price)
-    
-    
-    
-    #PLOT THE DATA ON THE GRAPH
-    
-    matplt.scatter(date,price,color='black',label='data')
-    matplt.plot(date,svr_lin.predict(date),color='blue',label='Linear SVR')
-    matplt.plot(date,svr_poly.predict(date),color='red',label='Polynomial SVR')
-    matplt.plot(date,svr_rbf.predict(date),color='green',label='RBF SVR')
-    matplt.xlabel('Dates')
-    matplt.ylabel('Price')
-    matplt.title('Support Vector Regression')
-    matplt.legend()
-    matplt.show()
-    
-    svr_lin.predict(10)[0]
-    svr_poly.predict(10)[0]
-    svr_rbf.predict(10)[0]
-    
-    
-    print('prediction over')
-
 
 
 
