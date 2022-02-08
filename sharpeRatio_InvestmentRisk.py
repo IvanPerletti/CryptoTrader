@@ -18,11 +18,11 @@ import pandas_datareader.data as web
 import matplotlib.pyplot as plt
 
 #list of stocks in portfolio
-stocks = ['BTC-USD', 'ETH-USD', 'BNB-USD', 'ADA-USD', 'SOL-USD', 'LUNA-USD', 'DOT-USD']
+stocks = ['BTC-USD', 'ETH-USD' ,'BNB-USD', 'ADA-USD', 'SOL-USD', 'LUNA-USD', 'DOT-USD']
 lLenStocks = len(stocks)
 #requests.post(url, data=payload, headers=headers, verify=False) 
 #download daily price data for each of the stocks in the portfolio
-data = web.DataReader(stocks,data_source='yahoo',start='1/1/2021')['Adj Close']
+data = web.DataReader(stocks,data_source='yahoo',start='12/12/2021')['Adj Close']
  
 #convert daily stock prices into daily returns
 returns = data.pct_change()
@@ -32,15 +32,23 @@ mean_daily_returns = returns.mean()
 cov_matrix = returns.cov()
  
 #set number of runs of random portfolio weights
-num_portfolios = 30003
- 
+num_portfolios = 8003
+            # def sharp_ratio(stocks, start_date, end_date, rfr):
+            #     ret = pd.DataFrame()
+            #     for stock in stocks:
+            #         ret[stock] = stock.pct_change()
+            #         cum_i = stock[-1]/stock[0] - 1
+            #         std_i = ret[i].std() * np.sqrt(252)
+            #         sharpe_i = (cum_i - rfr / 100)/std_i
+            #         print(sharpe_i)
+    
 #set up array to hold results
 #Array to hold weight for each stock
 results = np.zeros((4+lLenStocks-1,num_portfolios))
  
 for i in range(num_portfolios):
     #select random weights for portfolio holdings
-    weights = np.array(np.random.random(lLenStocks))
+    weights = np.array(np.random.randint(1,10,lLenStocks)).astype(float)
     #rebalance weights to sum to 1
     weights /= np.sum(weights)
  
@@ -62,6 +70,7 @@ vColumns.extend(stocks)
 results_frame = pd.DataFrame(results.T, columns= vColumns )
 #locate position of portfolio with highest Sharpe Ratio
 maxsp = results_frame.iloc[results_frame[['sharpe']].idxmax()]
+
 #locate positon of portfolio with minimum standard deviation
 minvp = results_frame.iloc[results_frame['stdev'].idxmin()]
 # print (results_frame)
