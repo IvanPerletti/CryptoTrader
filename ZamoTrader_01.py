@@ -25,20 +25,27 @@ plt.close('all')
 currency = "USD"
 metric = "Open"
 
-start = dt.date(2022,1, 1)
+start = dt.date(2021,6, 6)
 end =  dt.datetime.now()
-
+today = end.date()
 
 dataBtc = web.DataReader('BTC-USD', "yahoo", start, end)
 
 
-crypto = ['JUV', 'BONDLY'] #'ETH', 'BNB' , 'ADA', 'SOL', 'LUNA', 'DOT',  'MATIC', 'CRO', 'ATOM', 'EGLD' ]
+crypto = [ 'ETH', 'ADA', 'SOL', 'LUNA', 'CRV', 'CRO',
+           'EGLD', 'AVAX' ] # 'JUV', 'BONDLY',
 colnames = []
 
 first = True
 
 for ticker in crypto:
-    data = web.DataReader(f'{ticker}-{currency}', "yahoo", start, end)
+    
+    if 1:
+        data = web.DataReader(f'{ticker}-{currency}', "yahoo", start, end)
+        data.to_csv(f'{ticker}-{currency}{today}.csv')
+        
+        
+        
     #data2 =  yf.download('BTC',start,interval="1h")
     if 0:
         data = data.resample('1W').agg({'Open': 'first', 
@@ -47,7 +54,7 @@ for ticker in crypto:
                                       'Adj Close': 'last'})
     
     # Divide the DataFrame1 elements by the elements of DataFrame2
-    if 0:
+    if 1:
         data['Open']      = data['Open'].div(dataBtc['Open']);
         data['High']      = data['High'].div(dataBtc['High']);
         data['Low']       = data['Low'].div(dataBtc['Low']);
