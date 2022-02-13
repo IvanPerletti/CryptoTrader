@@ -34,10 +34,10 @@ today = end.date()
 strBase ='BTC'
 strCsvFile = f'{strBase}-{currency}-{today}.csv'
 try:
-    dataBtc = pd.read_csv(strCsvFile, parse_dates=[0], dayfirst=True, index_col = 'Date')
+    data_BaseLine = pd.read_csv(strCsvFile, parse_dates=[0], dayfirst=True, index_col = 'Date')
 except OSError:
-    dataBtc = web.DataReader(strBase, "yahoo", start, end)
-    dataBtc.to_csv(strCsvFile)
+    data_BaseLine = web.DataReader(strBase, "yahoo", start, end)
+    data_BaseLine.to_csv(strCsvFile)
 
 
 crypto = [ 'ETH', 'BNB' , 'XRP' , 'ADA', 'SOL', 'LUNA', 'AVAX' , 'DOT' , 'CRV', 'CRO',
@@ -50,23 +50,25 @@ for ticker in crypto:
     strCsvFile = f'{ticker}-{currency}-{today}.csv'
     
     try:
-        data = pd.read_csv(strCsvFile, parse_dates=[0], dayfirst=True, index_col = 'Date')
+        data_Raw = pd.read_csv(strCsvFile, parse_dates=[0], dayfirst=True, index_col = 'Date')
     except OSError:
-        data = web.DataReader(f'{ticker}-{currency}', "yahoo", start, end)
-        data.to_csv(strCsvFile)
-           
+        data_Raw = web.DataReader(f'{ticker}-{currency}', "yahoo", start, end)
+        data_Raw.to_csv(strCsvFile)
+        
+        
+    data = pd.DataFrame() # combined data frame
             # Divide the DataFrame1 elements by the elements of DataFrame2
     if 1:
-        data['Open']      = data['Open'].div(dataBtc['Open']);
-        data['High']      = data['High'].div(dataBtc['High']);
-        data['Low']       = data['Low'].div(dataBtc['Low']);
-        data['Adj Close'] = data['Adj Close'].div(dataBtc['Adj Close']);
+        data['Open']      = data_Raw['Open'].div(data_BaseLine['Open']);
+        data['High']      = data_Raw['High'].div(data_BaseLine['High']);
+        data['Low']       = data_Raw['Low'].div(data_BaseLine['Low']);
+        data['Adj Close'] = data_Raw['Adj Close'].div(data_BaseLine['Adj Close']);
         data.dropna(inplace = True) # not a number values
         
     #data2 =  yf.download('BTC',start,interval="1h")
     for ii in range(2):
         if ii:
-            data = data.resample('6D').agg({'Open': 'first', 
+            data = data_Raw.resample('6D').agg({'Open': 'first', 
                                           'High': 'max', 
                                           'Low': 'min', 
                                           'Adj Close': 'mean'})
