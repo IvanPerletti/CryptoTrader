@@ -26,22 +26,26 @@ plt.close('all')
 currency = "USD"
 metric = "Open"
 
-start = dt.date(2021,3, 3)
+start = dt.date(2022,1, 1)
 end =  dt.datetime.now()
 today = end.date()
 
 
-strBase ='BTC'
+strBase ='CRO'
 strCsvFile = f'{strBase}-{currency}-{today}.csv'
 try:
     data_BaseLine = pd.read_csv(strCsvFile, parse_dates=[0], dayfirst=True, index_col = 'Date')
 except OSError:
-    data_BaseLine = web.DataReader(strBase, "yahoo", start, end)
+    data_BaseLine = web.DataReader(f'{strBase}-{currency}', "yahoo", start, end)
     data_BaseLine.to_csv(strCsvFile)
 
 
-crypto = [ 'ETH', 'BNB' , 'XRP' , 'ADA', 'SOL', 'LUNA', 'AVAX' , 'DOT' , 'CRV', 'CRO',
-           'EGLD', 'AVAX' , 'JUV', 'BONDLY' ]
+crypto = [ 
+    # 'ETH', 'BNB' , 'XRP' , 'ADA',
+          # 'SOL', 'LUNA', 'AVAX' , 'DOT' , 
+            'CRO' , 'WBTC', 'EGLD', 'AVAX' , 'VVS', 'BIFI',
+          # 'JUV', 'BONDLY'
+          ]
 colnames = []
 
 first = True
@@ -58,17 +62,23 @@ for ticker in crypto:
         
     data = pd.DataFrame() # combined data frame
             # Divide the DataFrame1 elements by the elements of DataFrame2
-    if 1:
+    if 0:
         data['Open']      = data_Raw['Open'].div(data_BaseLine['Open']);
         data['High']      = data_Raw['High'].div(data_BaseLine['High']);
         data['Low']       = data_Raw['Low'].div(data_BaseLine['Low']);
         data['Adj Close'] = data_Raw['Adj Close'].div(data_BaseLine['Adj Close']);
-        data.dropna(inplace = True) # not a number values
         
+    else :
+        data['Open']      = data_Raw['Open']
+        data['High']      = data_Raw['High']
+        data['Low']       = data_Raw['Low']
+        data['Adj Close'] = data_Raw['Adj Close']
+        
+    data.dropna(inplace = True) # not a number values
     #data2 =  yf.download('BTC',start,interval="1h")
     for ii in range(2):
         if ii:
-            data = data_Raw.resample('6D').agg({'Open': 'first', 
+            data = data.resample('1W').agg({'Open': 'first', 
                                           'High': 'max', 
                                           'Low': 'min', 
                                           'Adj Close': 'mean'})
