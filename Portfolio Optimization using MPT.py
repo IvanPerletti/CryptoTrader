@@ -20,15 +20,15 @@ import matplotlib.pyplot as plt
 
 #list of stocks in portfolio
 # stocks = ['BTC-USD', 'ETH-USD' ,'BNB-USD', 'ADA-USD', 'SOL-USD', 'LUNA-USD', 'DOT-USD']
-stocks = [ 'BRE.MI', 'INTC' ,'ENGI.PA', 'BLK' ]
+stocks = [ 'LYYB.F', 'UIMR.AS', 'INTC', 'MDT' , 'PFE','ENGI.PA']
 lLenStocks = len(stocks)
 #requests.post(url, data=payload, headers=headers, verify=False) 
 #download daily price data for each of the stocks in the portfolio
-portfolio = web.DataReader(stocks,data_source='yahoo',start='5/5/2021', end = '11/11/2022')['Adj Close']
+portfolio = web.DataReader(stocks,data_source='yahoo',start='1/2/2021', end = '7/7/2022')['Adj Close']
 # using dropna() function  
 portfolio.dropna()
 #convert daily stock prices into daily returns
-returns_portfolio = portfolio.pct_change()
+returns_portfolio = portfolio.pct_change().apply(lambda x: np.log(1+x))
 #invent weight array
 weight_portfolio = np.array(np.random.randint(1,10,lLenStocks)).astype(float)
     #rebalance weights to sum to 1
@@ -55,7 +55,7 @@ port_volatility = []
 port_weights = []
 
 num_assets = len(portfolio.columns)
-num_portfolios = 1000
+num_portfolios = 8000
 
 #computing indiviual assets return
 individual_rets = portfolio.resample('Y').last().pct_change().mean()
@@ -100,7 +100,7 @@ portfolios_V1.plot.scatter(x='Volatility', y = 'Returns', marker = 'o', color='g
 rf = 0.01
 optimal_risk_port = portfolios_V1.iloc[   ((portfolios_V1['Returns']-rf)/portfolios_V1['Volatility']).idxmax() ]          
 
-plt.scatter(min_vol_port[1], min_vol_port[0],color='r', marker='*', s=500)
+plt.scatter(min_vol_port[1], min_vol_port[0],color='r', marker='h', s=500)
 plt.scatter(optimal_risk_port[1], optimal_risk_port[0], color='b', marker='*', s=500)
 
 

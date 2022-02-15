@@ -26,12 +26,12 @@ plt.close('all')
 currency = "USD"
 metric = "Open"
 
-start = dt.date(2022,1, 1)
+start = dt.date(2020,6, 6)
 end =  dt.datetime.now()
 today = end.date()
 
 
-strBase ='CRO'
+strBase ='WBTC'
 strCsvFile = f'{strBase}-{currency}-{today}.csv'
 try:
     data_BaseLine = pd.read_csv(strCsvFile, parse_dates=[0], dayfirst=True, index_col = 'Date')
@@ -41,9 +41,9 @@ except OSError:
 
 
 crypto = [ 
-    # 'ETH', 'BNB' , 'XRP' , 'ADA',
-          # 'SOL', 'LUNA', 'AVAX' , 'DOT' , 
-            'CRO' , 'WBTC', 'EGLD', 'AVAX' , 'VVS', 'BIFI',
+            'ETH', 'BNB' , 'XRP' , 'ADA',
+            'SOL', 'LUNA', 'AVAX' , 'DOT' , 
+            # 'CRO' , 'WBTC', 'EGLD', 'AVAX' , 'VVS', 'BIFI',
           # 'JUV', 'BONDLY'
           ]
 colnames = []
@@ -143,24 +143,35 @@ for ticker in crypto:
         sEMA = (26,12,9)
         longEMA = data['Adj Close'].ewm(span=sEMA[0], adjust=False, min_periods=sEMA[0]).mean()
         shortEMA = data['Adj Close'].ewm(span=sEMA[1], adjust=False, min_periods=sEMA[1]).mean()
-        vMACD = (  shortEMA - longEMA )
-        vSignal = vMACD.ewm(span=sEMA[2], adjust=False,min_periods=9).mean()
-        vMacdDiff = ( vMACD - vSignal )
-           
-    
+
+        
+        mac = pd.DataFrame() # combined data frame
+        mac['D'] = (  shortEMA - longEMA )
+        mac['Signal'] = mac['D'].ewm(span=sEMA[2], adjust=False,min_periods=9).mean()
+        mac['Diff'] =  ( mac['D'] - mac['Signal'] )
+        mac['Lapl'] = mac['Diff'].rolling(window=2).mean().diff(1)
         
         combined = pd.DataFrame() # combined data frame
-        
         combined['Adj Close'] = data ['Adj Close']
         combined['RSI_14'] = (100.0-RSI_14)
         combined['%K'] = vK
         combined['%D'] = vD
         plt.figure(figsize = (12,8))
         #figA.canvas.mpl_connect('pick_event', DataCursor(plt.gca()))
+
+
+        combined = combined.iloc[-80: , :] 
+        mac = mac.iloc[-80: , :] 
+        
+        vBuy =  ((combined['%K']>combined['%D']) & (combined['%D']<30)  & (mac['Diff']<0)& (mac['Lapl']>0)).astype(float)
+        vBuy = vBuy * mac['Diff'].max()
+        
+        vSell =  ((combined['%K']<combined['%D']) & (combined['%D']>70)  & (mac['Diff']>0) & (mac['Lapl']<0)).astype(float)
+        vSell = vSell * mac['Diff'].max()
+        
         
         ax1 = plt.subplot(311)
         line1, = ax1.plot(combined.index, combined['Adj Close'], color = 'lightgray')
-        
         ax1.set_title(ticker, color='white')
         ax1.grid(True, color = '#555555')
         ax1.set_axisbelow(True)
@@ -192,11 +203,15 @@ for ticker in crypto:
         ax2.tick_params(axis = 'x', colors='white')
         ax2.tick_params(axis = 'y', colors='white')
         
+
         
         ax3 = plt.subplot(313, sharex = ax1)
-        ax3.plot(data.index, vMACD, label =  'MACD', color = 'green')
-        ax3.plot(data.index, vSignal, label =  'Signal', color = 'red')
-        ax3.plot(data.index, vMacdDiff, label =  'Delta', color = 'grey')
+        ax3.plot(mac.index, mac['D'], label =  'MACD', color = 'green')
+        ax3.plot(mac.index, mac['Signal'], label =  'Signal', color = 'red')
+        ax3.plot(mac.index, mac['Diff'], label =  'Delta', color = 'grey')
+        ax3.plot(mac.index, vBuy, label =  'buy', color = 'pink')
+        ax3.plot(mac.index, vSell, label =  'sell', color = 'cyan')
+        ax3.plot(mac.index, mac['Lapl'], label =  'sell', color = 'white')
         ax3.axhline(0,linestyle='--', alpha =0.5, color = '#CCccCC')
         ax3.grid(True, color = '#555555')
         ax3.set_axisbelow(True)
