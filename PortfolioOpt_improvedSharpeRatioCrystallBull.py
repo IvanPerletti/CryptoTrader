@@ -33,9 +33,9 @@ def get_Historical_Data(strStockFiat):
     return P0
 def get_Random_weights(lNumStocks):
     #invent weight array
-    weight_P0 = np.array(np.random.randint(1,23,lNumStocks)).astype(float)
+    weight_P0 = np.array(np.random.randint(0,13,lNumStocks)).astype(float)
     #rebalance weights to sum to 1
-    weight_P0 = weight_P0**2
+    weight_P0 = weight_P0
     weight_P0 /= np.sum(weight_P0)
     return weight_P0
 
@@ -46,7 +46,7 @@ def get_Log_return(P0, r_Tot):
     P1 = P0.copy()
     strColnames = P1.columns
     for ii in range(len(strColnames)):
-        P1[strColnames[ii]] = np.exp (f64a_range * r_Tot[ii]) * P1.iloc[0,ii]
+        P1[strColnames[ii]] = np.exp (f64a_range * r_Tot[ii]) * P0.iloc[0,ii]
     return P1
 
 def get_Poly_return(P0, lPolyVal):
@@ -57,21 +57,13 @@ def get_Poly_return(P0, lPolyVal):
     for ii in range(len(strColnames)):
         x=np.array(P0.index.values, dtype=float)
         y=np.array(P0[strColnames[ii]].values, dtype=float)
-        # x = x.reshape(lDays, 1)
-        # y = y.reshape(lDays, 1)
-       
-        # regr = linear_model.LinearRegression()
-        # regr.fit(x, y)
-        #polynomial fit with degree = 2
         model = np.poly1d(np.polyfit(x, y, int(lPolyVal)))
         
         #add fitted polynomial line to scatterplot
         polyline = np.linspace(x[0], x[-1], 50)
         ax1.scatter(x, y)
         ax1.plot(polyline, model(polyline))
-        
-        
-        
+
         yHat = model(x)
         # plot it as in the example at http://scikit-learn.org/
         # plt.scatter(x, y,  color='white')
@@ -91,42 +83,50 @@ def get_cara_score(P0):
     cara['skew'] = P0_ret.skew()
     cara['kurt'] = P0_ret.kurtosis()
     # constant absolute risk aversion
-    theta = float(2.0)
+    theta = float(5)
     cara['score'] = cara['mean'] 
     + 0.5 * theta * cara['std']**2 
     + theta**2 * cara['std']**3 * cara['skew'] / 6
     - theta**3 * cara['std']**4 * ( cara['kurt'] - 3 ) / 720
     return cara
 
-def score_exec(P0, lNumEpochs, cara):
+def score_exec(P0, lNumEpochs):
     lNumStocks = len(P0.columns)
     lDays = len(P0)
     #Array to hold weight for each stock
-    m_results = np.zeros( (4+lNumStocks-1,lNumEpochs) )
-    r_Tot = np.log ( P0.iloc[-1] .div( P0.iloc[0] ) )
+    m_results = np.zeros( (5+lNumStocks-1,lNumEpochs) )
+    r_Tot = np.log ( P0.iloc[-1].div( P0.iloc[0] ) )
     r_Return_annual = 100 * (np.exp(r_Tot / lDays * 365) - 1)
+    Cara = get_cara_score(P0)
+    
     # P_log = get_Log_return(P0, r_Tot)
     P_log = get_Poly_return(P0, 1)
-    std_max = 1.0
+    
+    D_t = P0 / P_log - 1
+    std_Dt = D_t.std()
+    std_max = std_Dt.max()*1.6
     for ii in range(lNumEpochs):
         P0_weights = get_Random_weights(lNumStocks)
-        D_t = P0 / P_log - 1
-        std_Dt = D_t.std()
+
         #calculate portfolio return and volatility(standard deviation)
         ii_return  = np.sum(r_Return_annual * P0_weights)
-        # ii_sharpe =  np.sum(r_Return_annual / std_Dt * P0_weights)
-        ii_sharpe =  np.sum( cara['score'].T * P0_weights )
-        ii_vwr = np.sum(( r_Return_annual - (std_Dt)*100 )* P0_weights)
-        # ii_vwr = np.sum(
-        #     r_Return_annual * P0_weights * 
-        #     ( 1 - ( (std_Dt * P0_weights) / std_max)**2 ) )
+        # ii_cara =  np.sum(r_Return_annual / std_Dt * P0_weights)
+        ii_cara =  np.sum( Cara['score'] * P0_weights )
+        # ii_vwr = np.sum(( r_Return_annual - (std_Dt)*100 )* P0_weights)
+        ii_vwr1 = np.sum(
+            r_Return_annual * P0_weights * 
+            ( 1 - ( (std_Dt ) / std_max)**7 ) )
+        ii_vwr2 = np.sum(
+            r_Return_annual * P0_weights * 
+            ( 1 - ( (std_Dt ) / std_max)**0.1 ) )
         #store results in results array
         m_results[0,ii] = ii_return
-        m_results[1,ii] = ii_sharpe
-        m_results[2,ii] = ii_vwr
+        m_results[1,ii] = ii_cara
+        m_results[2,ii] = ii_vwr1
+        m_results[3,ii] = ii_vwr2
         #iterate through the weight vector and add data to results array
         for jj in range(lNumStocks):
-            m_results[jj+3,ii] = P0_weights[jj]
+            m_results[jj+4,ii] = P0_weights[jj]
             
     # print(kurtosis(x, fisher=False))
     # print(skew(x, bias=False))
@@ -144,6 +144,7 @@ def score_exec(P0, lNumEpochs, cara):
         plt.xticks(rotation=60)
         ax1.tick_params(axis = 'x', colors='white')
         ax1.tick_params(axis = 'y', colors='white')
+        strTitle += (':' + str(r_Tot[strTitle]))
         ax1.set_title(strTitle, color='white')   
     return m_results
 
@@ -154,12 +155,12 @@ if __name__ == "__main__":
     plt.close('all')
     currency = "EUR"
     metric = "Open"
-    delta = dt.timedelta(days=366)
+    delta = dt.timedelta(days=368)
     startDate = dt.datetime.now() - delta
     endDate =  dt.datetime.now()
     
     strStock = [ 
-    'BTC', 'ETH', 'CRO', 'AVAX'
+    'BTC', 'ETH', 'BNB', 'XRP' , 'USDC' , 'SOL' ,'CRO', 'AVAX'
        # 'CRO' , 'EGLD',
        # 'VVS', 'BIFI','ADA',
        # 'SOL', 'LUNA', 'AVAX' , 'DOT' , 
@@ -174,32 +175,40 @@ if __name__ == "__main__":
     
     #convert daily stock prices into daily log(x) returns
     # P0 = np.log2(P0*100)
-    lDays = 170
+    lDays = 11
     P0 = P0.tail(int(lDays))
     
-    lNumEpochs = 711
+    lNumEpochs = 1711
     
-    cara = get_cara_score(P0)
-    m_results = score_exec(P0, lNumEpochs, cara)
+    
+    m_results = score_exec(P0, lNumEpochs)
    
     strColStocks = P0.columns
-    vColumns = ['ret','sharpe','vwr']
+    vColumns = ['ret','cara','vwr','joker']
     vColumns.extend(strColStocks)
     results_frame = pd.DataFrame(m_results.T, columns= vColumns )
     #locate position of portfolio with highest VWR Ratio
     r_Max_VWR = results_frame.iloc[results_frame['ret'].idxmax()]
     print("\n-----------------RET\n", r_Max_VWR)
     #locate positon of portfolio with minimum standard deviation
-    r_Min_VWR = results_frame.iloc[results_frame['sharpe'].idxmax()]
-    print("\n-----------------SHARPE\n", r_Min_VWR)
+    r_Min_VWR = results_frame.iloc[results_frame['cara'].idxmax()]
+    print("\n-----------------CARA\n", r_Min_VWR)
     #locate positon of portfolio with minimum standard deviation
     r_Min_std = results_frame.iloc[results_frame['vwr'].idxmax()]
     print("\n-----------------VWR\n", r_Min_std)
+    #locate positon of portfolio with minimum standard deviation
+    r_Jolly = results_frame.iloc[results_frame['joker'].idxmax()]
+    print("\n-----------------JKR\n", r_Jolly)
     #create scatter plot coloured by Sharpe Ratio
     fig1, ax0 = plt.subplots()
-    ax0 = plt.scatter(results_frame.sharpe,results_frame.vwr,c = results_frame.ret,cmap='RdYlBu')
-    plt.xlabel('sharpe')
+    ax0 = plt.scatter(results_frame.cara,results_frame.vwr,c = results_frame.ret,cmap='RdYlBu')
+    plt.scatter(r_Max_VWR[1], r_Max_VWR[0],color='y', marker='^', s=180 , alpha=0.5)
+    plt.scatter(r_Min_VWR[1], r_Min_VWR[0],color='r', marker='v', s=150 , alpha=0.5)
+    plt.scatter(r_Min_std[1], r_Min_std[0],color='g', marker='s', s=120  , alpha=0.5)
+    plt.scatter(r_Jolly  [1], r_Jolly  [0],color='b', marker='x', s=90  , alpha=0.5)
+    plt.xlabel('cara')
     plt.ylabel('vwr')
+    plt.xticks(rotation=60)
     plt.grid(True, color = '#555555')
     plt.colorbar()
     plt.show()
