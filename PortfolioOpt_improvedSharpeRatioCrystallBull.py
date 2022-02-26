@@ -5,6 +5,7 @@ https://www.crystalbull.com/sharpe-ratio-better-with-log-returns/
 @author: perletti
 """
 import pandas as pd
+from scipy.stats import kurtosis, skew
 import pandas_datareader as web
 from sklearn import datasets, linear_model
 import matplotlib.pyplot as plt
@@ -82,17 +83,83 @@ def get_Poly_return(P0, lPolyVal):
     plt.show()
     return P1
 
+def get_cara_score(P0):
+    P0_ret = P0.pct_change() #.apply(lambda x: np.log(1+x))
+    cara = pd.DataFrame()
+    cara['mean'] = P0_ret.mean()
+    cara['std']  = P0_ret.std()
+    cara['skew'] = P0_ret.skew()
+    cara['kurt'] = P0_ret.kurtosis()
+    # constant absolute risk aversion
+    theta = float(2.0)
+    cara['score'] = cara['mean'] 
+    + 0.5 * theta * cara['std']**2 
+    + theta**2 * cara['std']**3 * cara['skew'] / 6
+    - theta**3 * cara['std']**4 * ( cara['kurt'] - 3 ) / 720
+    return cara
+
+def score_exec(P0, lNumEpochs, cara):
+    lNumStocks = len(P0.columns)
+    lDays = len(P0)
+    #Array to hold weight for each stock
+    m_results = np.zeros( (4+lNumStocks-1,lNumEpochs) )
+    r_Tot = np.log ( P0.iloc[-1] .div( P0.iloc[0] ) )
+    r_Return_annual = 100 * (np.exp(r_Tot / lDays * 365) - 1)
+    # P_log = get_Log_return(P0, r_Tot)
+    P_log = get_Poly_return(P0, 1)
+    std_max = 1.0
+    for ii in range(lNumEpochs):
+        P0_weights = get_Random_weights(lNumStocks)
+        D_t = P0 / P_log - 1
+        std_Dt = D_t.std()
+        #calculate portfolio return and volatility(standard deviation)
+        ii_return  = np.sum(r_Return_annual * P0_weights)
+        # ii_sharpe =  np.sum(r_Return_annual / std_Dt * P0_weights)
+        ii_sharpe =  np.sum( cara['score'].T * P0_weights )
+        ii_vwr = np.sum(( r_Return_annual - (std_Dt)*100 )* P0_weights)
+        # ii_vwr = np.sum(
+        #     r_Return_annual * P0_weights * 
+        #     ( 1 - ( (std_Dt * P0_weights) / std_max)**2 ) )
+        #store results in results array
+        m_results[0,ii] = ii_return
+        m_results[1,ii] = ii_sharpe
+        m_results[2,ii] = ii_vwr
+        #iterate through the weight vector and add data to results array
+        for jj in range(lNumStocks):
+            m_results[jj+3,ii] = P0_weights[jj]
+            
+    # print(kurtosis(x, fisher=False))
+    # print(skew(x, bias=False))
+    
+    strColnames = P_log.columns
+    for strTitle in strColnames:
+        fig2, ax1 = plt.subplots()
+        line1, = ax1.plot(P_log.index, P_log[strTitle])
+        ax1.plot(P0.index, P0[strTitle])
+        # ax1.set_strTitle(ticker, color='white')
+        ax1.grid(True, color = '#555555')
+        ax1.set_axisbelow(True)
+        ax1.set_facecolor('black')
+        ax1.figure.set_facecolor('#121212')
+        plt.xticks(rotation=60)
+        ax1.tick_params(axis = 'x', colors='white')
+        ax1.tick_params(axis = 'y', colors='white')
+        ax1.set_title(strTitle, color='white')   
+    return m_results
+
+
+
 if __name__ == "__main__":
     # %matplotlib qt
     plt.close('all')
     currency = "EUR"
     metric = "Open"
-    delta = dt.timedelta(days=364)
+    delta = dt.timedelta(days=366)
     startDate = dt.datetime.now() - delta
     endDate =  dt.datetime.now()
     
     strStock = [ 
-    'BTC', 'ETH', 'USDC' , 'CRO', 'AVAX'
+    'BTC', 'ETH', 'CRO', 'AVAX'
        # 'CRO' , 'EGLD',
        # 'VVS', 'BIFI','ADA',
        # 'SOL', 'LUNA', 'AVAX' , 'DOT' , 
@@ -107,60 +174,13 @@ if __name__ == "__main__":
     
     #convert daily stock prices into daily log(x) returns
     # P0 = np.log2(P0*100)
-    lDays = 800
+    lDays = 170
     P0 = P0.tail(int(lDays))
     
     lNumEpochs = 711
     
-    def score_exec(P0, lNumEpochs):
-        lNumStocks = len(P0.columns)
-        lDays = len(P0)
-        #Array to hold weight for each stock
-        m_results = np.zeros( (4+lNumStocks-1,lNumEpochs) )
-        r_Tot = np.log ( P0.iloc[-1] .div( P0.iloc[0] ) )
-        r_Return_annual = 100 * (np.exp(r_Tot / lDays * 365) - 1)
-        P_log = get_Log_return(P0, r_Tot)
-        # P_log = get_Poly_return(P0, 1)
-        std_max = 1.0
-        for ii in range(lNumEpochs):
-            P0_weights = get_Random_weights(lNumStocks)
-            D_t = P0 / P_log - 1
-            std_Dt = D_t.std()
-            #calculate portfolio return and volatility(standard deviation)
-            ii_return  = np.sum(r_Return_annual * P0_weights)
-            ii_sharpe =  np.sum(r_Return_annual / std_Dt * P0_weights)
-            # ii_vwr = np.sum(( r_Return_annual - (std_Dt)*100 )* P0_weights)
-            ii_vwr = np.sum(
-                r_Return_annual * P0_weights * 
-                (1 - ( (std_Dt * P0_weights)/std_max)**0.2) )
-            # k1 = (r_Return_annual )/(r_Return_annual + std_Dt*100 )
-            # ii_vwr = np.sum( k1 * P0_weights )
-            #store results in results array
-            m_results[0,ii] = ii_return
-            m_results[1,ii] = ii_sharpe
-            m_results[2,ii] = ii_vwr
-            #iterate through the weight vector and add data to results array
-            for jj in range(lNumStocks):
-                m_results[jj+3,ii] = P0_weights[jj]
-                
-        strColnames = P_log.columns
-        for strTitle in strColnames:
-            fig2, ax1 = plt.subplots()
-            line1, = ax1.plot(P_log.index, P_log[strTitle])
-            ax1.plot(P0.index, P0[strTitle])
-            # ax1.set_strTitle(ticker, color='white')
-            ax1.grid(True, color = '#555555')
-            ax1.set_axisbelow(True)
-            ax1.set_facecolor('black')
-            ax1.figure.set_facecolor('#121212')
-            plt.xticks(rotation=60)
-            ax1.tick_params(axis = 'x', colors='white')
-            ax1.tick_params(axis = 'y', colors='white')
-            ax1.set_title(strTitle, color='white')   
-        return m_results
-    
-    
-    m_results = score_exec(P0, lNumEpochs)
+    cara = get_cara_score(P0)
+    m_results = score_exec(P0, lNumEpochs, cara)
    
     strColStocks = P0.columns
     vColumns = ['ret','sharpe','vwr']
