@@ -19,12 +19,12 @@ import pandas_datareader.data as web
 import matplotlib.pyplot as plt
 
 #list of stocks in portfolio
-# stocks = ['BTC-USD', 'ETH-USD' ,'BNB-USD', 'ADA-USD', 'SOL-USD', 'LUNA-USD', 'DOT-USD']
-stocks = [ 'LYYB.F', 'UIMR.AS', 'INTC', 'MDT' , 'PFE','ENGI.PA']
+stocks = ['BTC-USD', 'ETH-USD' ,'BNB-USD', 'ADA-USD', 'SOL-USD', 'CRO-USD', 'DOT-USD']
+# stocks = [ 'LYYB.F', 'UIMR.AS', 'INTC', 'MDT' , 'PFE','ENGI.PA']
 lLenStocks = len(stocks)
 #requests.post(url, data=payload, headers=headers, verify=False) 
 #download daily price data for each of the stocks in the portfolio
-portfolio = web.DataReader(stocks,data_source='yahoo',start='1/2/2021', end = '7/7/2022')['Adj Close']
+portfolio = web.DataReader(stocks,data_source='yahoo',start='1/2/2020', end = '2/22/2022')['Adj Close']
 # using dropna() function  
 portfolio.dropna()
 #convert daily stock prices into daily returns
@@ -55,7 +55,7 @@ port_volatility = []
 port_weights = []
 
 num_assets = len(portfolio.columns)
-num_portfolios = 8000
+num_portfolios = 710
 
 #computing indiviual assets return
 individual_rets = portfolio.resample('Y').last().pct_change().mean()
@@ -93,16 +93,23 @@ min_vol_port = portfolios_V1.iloc[portfolios_V1['Volatility'].idxmin()]
 
 print(min_vol_port)
 
-
+fig2, ax1 = plt.subplots()
+ax1.grid(True, color = '#555555')
+ax1.set_axisbelow(True)
+ax1.set_facecolor('black')
+ax1.figure.set_facecolor('#121212')
+plt.xticks(rotation=60)
+ax1.tick_params(axis = 'x', colors='white')
+ax1.tick_params(axis = 'y', colors='white')
 #plot efficent frontier
-portfolios_V1.plot.scatter(x='Volatility', y = 'Returns', marker = 'o', color='g',
-                           s=15, alpha=0.8, grid =True, figsize=[8,8])
+ax1.scatter(portfolios_V1['Volatility'], portfolios_V1['Returns'], marker = 'o', color='c',
+                           s=15, alpha=0.8)
 rf = 0.01
 optimal_risk_port = portfolios_V1.iloc[   ((portfolios_V1['Returns']-rf)/portfolios_V1['Volatility']).idxmax() ]          
 
-plt.scatter(min_vol_port[1], min_vol_port[0],color='r', marker='h', s=500)
-plt.scatter(optimal_risk_port[1], optimal_risk_port[0], color='b', marker='*', s=500)
 
+ax1.scatter(min_vol_port[1], min_vol_port[0],color='r', marker='h', s=500)
+ax1.scatter(optimal_risk_port[1], optimal_risk_port[0], color='b', marker='*', s=500)
 
 
 

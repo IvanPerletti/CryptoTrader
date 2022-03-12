@@ -56,8 +56,8 @@ crypto = [ 'ETH', 'BNB' , 'XRP' ]
 
 for symbol in crypto:
     data = getCryptoQuotes(symbol,
-                      start_date='2021-01-01 00:00:00',
-                      end_date='2021-01-02 00:00:00')
+                      start_date='2021-11-11 00:00:00',
+                      end_date='2022-02-02 00:00:00')
 
     # making A LOT of assumptions here, hopefully the keys don't change in the future
     data_flat = [quote['quote']['USD'] for quote in data['data']['quotes']]

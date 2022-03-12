@@ -18,11 +18,11 @@ import pandas_datareader.data as web
 import matplotlib.pyplot as plt
 
 #list of stocks in portfolio
-stocks = ['BTC-USD', 'ETH-USD' ,'BNB-USD', 'ADA-USD', 'SOL-USD', 'LUNA-USD', 'DOT-USD']
+stocks = ['BTC-USD', 'ETH-USD' ,'BNB-USD', 'ADA-USD', 'SOL-USD', 'CRO-USD', 'DOT-USD']
 lLenStocks = len(stocks)
 #requests.post(url, data=payload, headers=headers, verify=False) 
 #download daily price data for each of the stocks in the portfolio
-data = web.DataReader(stocks,data_source='yahoo',start='12/12/2021')['Adj Close']
+data = web.DataReader(stocks,data_source='yahoo',start='12/12/2020')['Adj Close']
  
 #convert daily stock prices into daily returns
 returns = data.pct_change()
