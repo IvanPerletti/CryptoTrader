@@ -40,10 +40,9 @@ except OSError:
     data_BaseLine.to_csv(strCsvFile)
 
 
-crypto = [ 
-            'BTC', 'ETH', 'AVAX' ,'CRO' , 'XRP',
+crypto = [ 'ETH', 'VVS' ,'CRO' , 'XRP', 'WBTC',
            # 'VVS', 'BIFI','ADA',
-                'SOL', 'LUNA1', 'AVAX' , 'DOT' , 
+                'SOL', 'LUNA1', 'AVAX' , 'DOT', 'EGLD' , 
              # 'CRO' , 'WBTC',  'AVAX' , 
           # 'JUV', 'BONDLY'
           ]

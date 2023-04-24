@@ -164,7 +164,7 @@ if __name__ == "__main__":
     plt.close('all')
     currency = "USD"
     metric = "Open"
-    delta = dt.timedelta(days=111)
+    delta = dt.timedelta(days=51)
     startDate = dt.datetime.now() - delta
     endDate =  dt.datetime.now()
     
